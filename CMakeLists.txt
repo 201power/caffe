@@ -10,8 +10,8 @@ endif()
 project(Caffe C CXX)
 
 # ---[ Caffe version
-set(CAFFE_TARGET_VERSION "1.0.0-rc3")
-set(CAFFE_TARGET_SOVERSION "1.0.0-rc3")
+set(CAFFE_TARGET_VERSION "0.14.2")
+set(CAFFE_TARGET_SOVERSION "0.14")
 add_definitions(-DCAFFE_VERSION=${CAFFE_TARGET_VERSION})
 
 # ---[ Using cmake scripts and modules
@@ -62,7 +62,8 @@ configure_file(cmake/Templates/caffe_config.h.in "${PROJECT_BINARY_DIR}/caffe_co
 
 # ---[ Includes
 set(Caffe_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
-include_directories(${Caffe_INCLUDE_DIR} ${PROJECT_BINARY_DIR})
+set(THIRDPARTY_DIR ${PROJECT_SOURCE_DIR}/3rdparty)
+include_directories(${Caffe_INCLUDE_DIR} ${PROJECT_BINARY_DIR} ${THIRDPARTY_DIR})
 include_directories(BEFORE src) # This is needed for gtest.
 
 # ---[ Subdirectories
