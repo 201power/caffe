@@ -10,8 +10,11 @@ void CuDNNSigmoidLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   SigmoidLayer<Dtype>::LayerSetUp(bottom, top);
   // initialize cuDNN
+  CUDNN_CHECK(cudnnCreate(&handle_));
   cudnn::createTensor4dDesc<Dtype>(&bottom_desc_);
   cudnn::createTensor4dDesc<Dtype>(&top_desc_);
+  cudnn::createActivationDescriptor<Dtype>(&activ_desc_,
+      CUDNN_ACTIVATION_SIGMOID);
   handles_setup_ = true;
 }
 
@@ -34,6 +37,7 @@ CuDNNSigmoidLayer<Dtype>::~CuDNNSigmoidLayer() {
 
   cudnnDestroyTensorDescriptor(this->bottom_desc_);
   cudnnDestroyTensorDescriptor(this->top_desc_);
+  cudnnDestroy(this->handle_);
 }
 
 INSTANTIATE_CLASS(CuDNNSigmoidLayer);

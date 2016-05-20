@@ -1,6 +1,4 @@
-#ifdef USE_OPENCV
 #include <opencv2/core/core.hpp>
-#endif  // USE_OPENCV
 
 #include <vector>
 
@@ -21,13 +19,30 @@ void MemoryDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       " positive in memory_data_param";
   vector<int> label_shape(1, batch_size_);
   top[0]->Reshape(batch_size_, channels_, height_, width_);
-  top[1]->Reshape(label_shape);
+  top[1]->Reshape(label_shape); // label
+  top[2]->Reshape(label_shape); // weights
   added_data_.Reshape(batch_size_, channels_, height_, width_);
   added_label_.Reshape(label_shape);
+  added_weights_.Reshape(label_shape);
   data_ = NULL;
   labels_ = NULL;
+  weights_ = NULL;
   added_data_.cpu_data();
   added_label_.cpu_data();
+  added_weights_.cpu_data();
+}
+
+template <typename Dtype>
+MemoryDataLayer<Dtype>::~MemoryDataLayer()
+{
+    if (data_)
+        delete[] data_;
+
+    if (labels_)
+        delete[] labels_;
+
+    if (weights_)
+        delete[] weights_;
 }
 
 template <typename Dtype>
@@ -40,20 +55,21 @@ void MemoryDataLayer<Dtype>::AddDatumVector(const vector<Datum>& datum_vector) {
       "The added data must be a multiple of the batch size.";
   added_data_.Reshape(num, channels_, height_, width_);
   added_label_.Reshape(num, 1, 1, 1);
+  added_weights_.Reshape(num, 1, 1, 1);
   // Apply data transformations (mirror, scale, crop...)
   this->data_transformer_->Transform(datum_vector, &added_data_);
   // Copy Labels
   Dtype* top_label = added_label_.mutable_cpu_data();
+  Dtype* top_weights = added_weights_.mutable_cpu_data();
   for (int item_id = 0; item_id < num; ++item_id) {
     top_label[item_id] = datum_vector[item_id].label();
   }
   // num_images == batch_size_
   Dtype* top_data = added_data_.mutable_cpu_data();
-  Reset(top_data, top_label, num);
+  Reset(top_data, top_label, top_weights, num);
   has_new_data_ = true;
 }
 
-#ifdef USE_OPENCV
 template <typename Dtype>
 void MemoryDataLayer<Dtype>::AddMatVector(const vector<cv::Mat>& mat_vector,
     const vector<int>& labels) {
@@ -65,32 +81,51 @@ void MemoryDataLayer<Dtype>::AddMatVector(const vector<cv::Mat>& mat_vector,
       "The added data must be a multiple of the batch size.";
   added_data_.Reshape(num, channels_, height_, width_);
   added_label_.Reshape(num, 1, 1, 1);
+  added_weights_.Reshape(num, 1, 1, 1);
   // Apply data transformations (mirror, scale, crop...)
   this->data_transformer_->Transform(mat_vector, &added_data_);
   // Copy Labels
   Dtype* top_label = added_label_.mutable_cpu_data();
+  Dtype* top_weights = added_weights_.mutable_cpu_data();
   for (int item_id = 0; item_id < num; ++item_id) {
     top_label[item_id] = labels[item_id];
   }
   // num_images == batch_size_
   Dtype* top_data = added_data_.mutable_cpu_data();
-  Reset(top_data, top_label, num);
+  Reset(top_data, top_label, top_weights, num);
   has_new_data_ = true;
 }
-#endif  // USE_OPENCV
+
 
 template <typename Dtype>
-void MemoryDataLayer<Dtype>::Reset(Dtype* data, Dtype* labels, int n) {
+void MemoryDataLayer<Dtype>::Reset(Dtype* data, Dtype* labels, Dtype* weights, int n) {
   CHECK(data);
   CHECK(labels);
+  CHECK(weights);
   CHECK_EQ(n % batch_size_, 0) << "n must be a multiple of batch size";
   // Warn with transformation parameters since a memory array is meant to
   // be generic and no transformations are done with Reset().
   if (this->layer_param_.has_transform_param()) {
-    LOG(WARNING) << this->type() << " does not transform array data on Reset()";
+    //LOG(WARNING) << this->type() << " does not transform array data on Reset()";
   }
-  data_ = data;
-  labels_ = labels;
+    if ( data_)
+        delete[] data_;
+    
+    if (labels_)
+        delete[] labels_;
+
+    if (weights_)
+        delete[] weights_;
+    
+    data_ = new Dtype[n * size_];
+    labels_ = new Dtype[n];
+    weights_ = new Dtype[n];
+    
+    
+    memcpy(data_, data, sizeof(Dtype) * n * size_);
+    memcpy(labels_, labels, sizeof(Dtype) * n);
+    memcpy(weights_, weights, sizeof(Dtype) * n);
+    
   n_ = n;
   pos_ = 0;
 }
@@ -102,6 +137,7 @@ void MemoryDataLayer<Dtype>::set_batch_size(int new_size) {
   batch_size_ = new_size;
   added_data_.Reshape(batch_size_, channels_, height_, width_);
   added_label_.Reshape(batch_size_, 1, 1, 1);
+  added_weights_.Reshape(batch_size_, 1, 1, 1);
 }
 
 template <typename Dtype>
@@ -110,8 +146,10 @@ void MemoryDataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   CHECK(data_) << "MemoryDataLayer needs to be initalized by calling Reset";
   top[0]->Reshape(batch_size_, channels_, height_, width_);
   top[1]->Reshape(batch_size_, 1, 1, 1);
+  top[2]->Reshape(batch_size_, 1, 1, 1);
   top[0]->set_cpu_data(data_ + pos_ * size_);
   top[1]->set_cpu_data(labels_ + pos_);
+  top[2]->set_cpu_data(weights_ + pos_);
   pos_ = (pos_ + batch_size_) % n_;
   if (pos_ == 0)
     has_new_data_ = false;

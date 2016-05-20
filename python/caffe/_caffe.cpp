@@ -26,10 +26,6 @@
 #define PyArray_SetBaseObject(arr, x) (PyArray_BASE(arr) = (x))
 #endif
 
-// Hack to convert macro to string
-#define STRINGIZE(m) #m
-#define STRINGIZE2(m) STRINGIZE(m)
-
 namespace bp = boost::python;
 
 namespace caffe {
@@ -106,7 +102,7 @@ void Net_Save(const Net<Dtype>& net, string filename) {
 }
 
 void Net_SetInputArrays(Net<Dtype>* net, bp::object data_obj,
-    bp::object labels_obj) {
+    bp::object labels_obj, bp::object weights_obj) {
   // check that this network has an input MemoryDataLayer
   shared_ptr<MemoryDataLayer<Dtype> > md_layer =
     boost::dynamic_pointer_cast<MemoryDataLayer<Dtype> >(net->layers()[0]);
@@ -120,9 +116,12 @@ void Net_SetInputArrays(Net<Dtype>* net, bp::object data_obj,
       reinterpret_cast<PyArrayObject*>(data_obj.ptr());
   PyArrayObject* labels_arr =
       reinterpret_cast<PyArrayObject*>(labels_obj.ptr());
+  PyArrayObject* weights_arr =
+      reinterpret_cast<PyArrayObject*>(weights_obj.ptr());
   CheckContiguousArray(data_arr, "data array", md_layer->channels(),
       md_layer->height(), md_layer->width());
   CheckContiguousArray(labels_arr, "labels array", 1, 1, 1);
+  CheckContiguousArray(weights_arr, "weights array", 1, 1, 1);
   if (PyArray_DIMS(data_arr)[0] != PyArray_DIMS(labels_arr)[0]) {
     throw std::runtime_error("data and labels must have the same first"
         " dimension");
@@ -134,6 +133,7 @@ void Net_SetInputArrays(Net<Dtype>* net, bp::object data_obj,
 
   md_layer->Reset(static_cast<Dtype*>(PyArray_DATA(data_arr)),
       static_cast<Dtype*>(PyArray_DATA(labels_arr)),
+      static_cast<Dtype*>(PyArray_DATA(weights_arr)),
       PyArray_DIMS(data_arr)[0]);
 }
 
@@ -217,7 +217,7 @@ BOOST_PYTHON_MODULE(_caffe) {
   // below, we prepend an underscore to methods that will be replaced
   // in Python
 
-  bp::scope().attr("CAFFE_VERSION") = STRINGIZE2(CAFFE_VERSION);
+  bp::scope().attr("__version__") = AS_STRING(CAFFE_VERSION);
 
   // Caffe utility functions
   bp::def("set_mode_cpu", &set_mode_cpu);
