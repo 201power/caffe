@@ -16,6 +16,7 @@
 #	You should not set this flag if you will be reading LMDBs with any
 #	possibility of simultaneous read and write
 # ALLOW_LMDB_NOLOCK := 1
+
 # Uncomment if you're using OpenCV 3
 # OPENCV_VERSION := 3
 
@@ -97,6 +98,7 @@ LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib
 # (Usually not necessary -- OpenCV libraries are normally installed in one of the above $LIBRARY_DIRS.)
 # USE_PKG_CONFIG := 1
 
+# N.B. both build and distribute dirs are cleared on `make clean`
 BUILD_DIR := build
 DISTRIBUTE_DIR := distribute
 
@@ -108,6 +110,3 @@ TEST_GPUID := 0
 
 # enable pretty build (comment to see full commands)
 Q ?= @
-
-# shared object suffix name to differentiate branches
-LIBRARY_NAME_SUFFIX := -nv

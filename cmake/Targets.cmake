@@ -1,16 +1,17 @@
 ################################################################################################
 # Defines global Caffe_LINK flag, This flag is required to prevent linker from excluding
 # some objects which are not addressed directly but are registered via static constructors
-if(BUILD_SHARED_LIBS)
-  set(Caffe_LINK caffe)
-else()
-  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(Caffe_LINK -Wl,-force_load caffe)
-  elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(Caffe_LINK -Wl,--whole-archive caffe -Wl,--no-whole-archive)
+macro(caffe_set_caffe_link)
+  if(BUILD_SHARED_LIBS)
+    set(Caffe_LINK caffe)
+  else()
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+      set(Caffe_LINK -Wl,-force_load caffe)
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      set(Caffe_LINK -Wl,--whole-archive caffe -Wl,--no-whole-archive)
+    endif()
   endif()
-endif()
-
+endmacro()
 ################################################################################################
 # Convenient command to setup source group for IDEs that support this feature (VS, XCode)
 # Usage:
@@ -109,9 +110,7 @@ function(caffe_default_properties target)
     DEBUG_POSTFIX ${Caffe_DEBUG_POSTFIX}
     ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib"
     LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib"
-    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
-  )
-
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
   # make sure we build all external depepdencies first
   if (DEFINED external_project_dependencies)
     add_dependencies(${target} ${external_project_dependencies})

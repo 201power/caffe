@@ -26,7 +26,7 @@ class MemoryDataLayer : public BaseDataLayer<Dtype> {
 
   virtual inline const char* type() const { return "MemoryData"; }
   virtual inline int ExactNumBottomBlobs() const { return 0; }
-  virtual inline int ExactNumTopBlobs() const { return 2; }
+  virtual inline int ExactNumTopBlobs() const { return 3; }
 
   virtual void AddDatumVector(const vector<Datum>& datum_vector);
 #ifdef USE_OPENCV
@@ -36,13 +36,14 @@ class MemoryDataLayer : public BaseDataLayer<Dtype> {
 
   // Reset should accept const pointers, but can't, because the memory
   //  will be given to Blob, which is mutable
-  void Reset(Dtype* data, Dtype* label, int n);
+  void Reset(Dtype* data, Dtype* label, Dtype* weights,int n);
   void set_batch_size(int new_size);
 
   int batch_size() { return batch_size_; }
   int channels() { return channels_; }
   int height() { return height_; }
   int width() { return width_; }
+  virtual ~MemoryDataLayer();
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -51,10 +52,12 @@ class MemoryDataLayer : public BaseDataLayer<Dtype> {
   int batch_size_, channels_, height_, width_, size_;
   Dtype* data_;
   Dtype* labels_;
+  Dtype* weights_;
   int n_;
   size_t pos_;
   Blob<Dtype> added_data_;
   Blob<Dtype> added_label_;
+  Blob<Dtype> added_weights_;
   bool has_new_data_;
 };
 
